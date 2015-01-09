@@ -1,0 +1,165 @@
+<html>
+<head>
+<style>
+	canvas{
+		position: fixed;
+		top: 0;
+		left: 0;
+	}
+	#container{
+	    z-index: 0; left:0px; top:0px;
+	    overflow: hidden;
+	    position: absolute;
+
+	    width: 100%;
+	    height: 100%;
+    }
+</style>
+</head>
+
+<body>
+<div id="container"></div>
+<script src = "three.min.js"></script>
+
+<script>
+	
+	var clock = new THREE.Clock();
+	var camera, renderer, scene;
+	var circle, gridXZ;
+	var speed = 200, angle = 2;
+	
+	var pos = new THREE.Vector3(0, 0, 0);
+	var vel = new THREE.Vector3(1,0,2);
+	var container;
+	
+	init();
+	animate();
+	
+function init(){
+	container = document.getElementById ("container");
+	var width = container.clientWidth;
+	var height = container.clientHeight;
+	
+	renderer = new THREE.WebGLRenderer ({antualias: true});
+	renderer.setSize (width , height);
+	renderer.setClearColor (0x888888);
+	document.body.appendChild (renderer.domElement);
+	
+	scene = new THREE.Scene();
+	
+	//camera
+	camera = new THREE.PerspectiveCamera (45, width/height, 0.1, 10000000);
+	camera.position.y = 160;
+	camera.position.z = 200;
+	//camera.position.x = 300;
+	camera.lookAt (new THREE.Vector3 (0, 0, 0));
+	
+	//grid
+	gridXZ = new THREE.GridHelper (100 , 20);
+	gridXZ.setColors (new THREE.Color(0xff0000), new THREE.Color(0xffffff));
+	
+	scene.add (gridXZ);	
+
+	//circle
+	var circleGeometry = new THREE.CylinderGeometry (10,10,6,32);
+	var circleMaterial = new THREE.MeshLambertMaterial({color:0x990000});
+	circle = new THREE.Mesh (circleGeometry, circleMaterial);
+	scene.add (circle);
+	
+	//xz = 0
+	var yGeometry = new THREE.BoxGeometry(1,80,1);
+	var yMaterial = new THREE.MeshLambertMaterial({color: 0x99fff});
+	var y = new THREE.Mesh (yGeometry,yMaterial);
+	y.position.set(0,0,0);
+	scene.add(y);
+	
+	wallset();
+	
+	//pointlight
+	var pointLight = new THREE.PointLight (0xffffff);
+	pointLight.position.set (0,300,200);
+	scene.add (pointLight);
+	
+	window.addEventListener ('resize', onWindowResize, false);	
+}	
+
+function wallset(){
+	
+	var xwallGeometry = new THREE.BoxGeometry(1, 20, 200);
+	var xwallMaterial = new THREE.MeshLambertMaterial({color: 0x99fff});
+	var wallxp = new THREE.Mesh (xwallGeometry, xwallMaterial);
+	wallxp.position.set (101,0,0);
+	scene.add(wallxp);
+	
+	var wallxn = new THREE.Mesh (xwallGeometry, xwallMaterial);
+	wallxn.position.set (-101,0,0);
+	scene.add(wallxn);
+	
+	var zwallGeometry = new THREE.BoxGeometry(202, 20, 1);
+	var zwallMaterial = new THREE.MeshLambertMaterial({color: 0x99fff});
+	var wallzn = new THREE.Mesh (zwallGeometry, zwallMaterial);
+	wallzn.position.set (0,0,-101);
+	scene.add(wallzn);
+	
+	var wallzp = new THREE.Mesh (zwallGeometry, zwallMaterial);
+	wallzp.position.set (0,0,101);
+	scene.add(wallzp);
+}
+
+function Collision(){
+	
+	if( pos.x + 10 > (gridXZ.position.x+100)){
+			//angle =  Math.PI + angle*(-1);
+			vel.x = -vel.x;
+	}
+	if( pos.x - 10 < (gridXZ.position.x-100)){
+		    //angle =  Math.PI + angle*(-1);
+			vel.x = -vel.x;
+	}
+	if( pos.z + 10 > (gridXZ.position.z+100)){
+		   // angle =  -angle;
+			vel.z = -vel.z;
+		  }
+	if( pos.z - 10 < (gridXZ.position.z-100)){
+			//angle =  -angle;
+			vel.z = -vel.z;
+			
+	}
+	console.log(angle);
+}
+
+function animate(){
+	//	debugger;
+	var dt = clock.getDelta();
+	var dir = new THREE.Vector3(1,0,0);
+	dir.multiplyScalar (dt*speed);	//dir *= dt*speed;
+	dir.applyAxisAngle (new THREE.Vector3(0,1,0), angle);
+	
+	vel.multiplyScalar(0.99);
+	pos.add(vel);
+	//pos.add (dir); 
+	if (circle != undefined) { 
+		Collision();
+		circle.position.set (pos.x, pos.y, pos.z);
+		//circle.rotation.y =(angle);
+	}
+	
+	requestAnimationFrame (animate);
+	render();
+}
+//////reshape
+function onWindowResize()
+{
+	var width = container.clientWidth;
+	var height = container.clientHeight;
+	camera.aspect = width / height;
+	camera.updateProjectionMatrix();
+	renderer.setSize (width, height);
+}
+function render(){
+	renderer.render (scene, camera);
+}
+
+</script>
+</body>
+</html>

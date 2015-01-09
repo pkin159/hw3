@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+	body {
+		background-color: #fff;
+		color: #111;
+		margin: 0px;
+		overflow: hidden;
+		font-family: Monospace;
+		font-size: 20px;
+		position: absolute;
+	}
+	#info {
+		position: absolute;
+		top: 0px; width: 100%;
+		
+		padding: 5px;
+		text-align: center;
+		color: #ffff00
+	}
+	a {color: #00ffff}
+	strong {color:red}
+</style>
+</head>
+
+<body>
+
+<div id="info" >
+	Hockey <br/>
+</div>
+
+<script src="three.min.js"></script>
+<script src="OrbitControls.js"></script>
+
+<script>
+
+
+var scene, renderer, camera;
+var width, height;
+var clock = new THREE.Clock();
+var mouse = new THREE.Vector2();
+var gridXZ;
+
+var target = new THREE.Vector3(0,0,0), targetA = new THREE.Vector3(0,0,0), TV = new THREE.Vector3(0,0,0);	// arm's reach
+
+var plane, cube;
+var hockey, HP = new THREE.Vector3(0, 0, -80), HV = new THREE.Vector3(0,0,0), speed = 300;
+var arm, arm2, r = 10,armlen = 35, reach;
+var r0 = new THREE.Vector3(0,0,0), r1 = new THREE.Vector3 (armlen,0,0), r2 = new THREE.Vector3 (2*armlen,0,0);	// r2 = reach position
+var tempO = new THREE.Vector3(), tempT = new THREE.Vector3(), test = new THREE.Vector3();
+var theta,theta1, theta2;
+
+init();
+animate();
+
+function init(){
+	setCanvas();
+	setObjects();
+	setArm();
+	setWall();
+	setCamera();
+	setLight();
+}
+function setWall(){
+	var l = 200,h = 20, w = 1 ;
+	
+	var xwallGeometry = new THREE.BoxGeometry(1, 20, 200);
+	var xwallMaterial = new THREE.MeshLambertMaterial({color: 0x773300});
+	var wallxp = new THREE.Mesh (xwallGeometry, xwallMaterial);
+	wallxp.position.set (101,10,-100);
+	scene.add(wallxp);
+	
+	var wallxn = new THREE.Mesh (xwallGeometry, xwallMaterial);
+	wallxn.position.set (-101,10,-100);
+	scene.add(wallxn);
+	
+	var zwallGeometry = new THREE.BoxGeometry(202, 20, 1);
+	var zwallMaterial = new THREE.MeshLambertMaterial({color: 0x773300});
+	var wallzn = new THREE.Mesh (zwallGeometry, zwallMaterial);
+	wallzn.position.set (0,10,-201);
+	scene.add(wallzn);
+	
+	var wallzp = new THREE.Mesh (zwallGeometry, zwallMaterial);
+	wallzp.position.set (0,10,1);
+	scene.add(wallzp);
+}
+
+function setArm(){
+	arm = new THREE.Object3D();
+	theta1 = theta2 = 0;
+	
+	var armMesh1 = new THREE.Mesh (
+		new THREE.BoxGeometry (armlen, 3,3), 
+		new THREE.MeshBasicMaterial ({color: 0x00ffff, wireframe:true})
+	);
+	arm.add(armMesh1);
+	armMesh1.translateOnAxis (new THREE.Vector3(1,0,0), armlen/2);
+	
+	arm2 = new THREE.Object3D();
+	var armMesh2 = new THREE.Mesh (
+		new THREE.BoxGeometry (armlen, 3,3), 
+		new THREE.MeshBasicMaterial ({color: 0xff00ff, wireframe:true})
+	);
+	armMesh2.translateOnAxis (new THREE.Vector3(1,0,0), armlen/2);
+	arm2.add(armMesh2);
+	arm2.translateOnAxis (new THREE.Vector3(1,0,0), armlen);
+	arm.add (arm2);
+	
+	// Reach
+	var reachGeometry = new THREE.CylinderGeometry (r,r,6,32);
+	var reachMaterial = new THREE.MeshLambertMaterial({color:0x0000aa});
+	reach = new THREE.Mesh (reachGeometry, reachMaterial);
+	reach.translateOnAxis (new THREE.Vector3(1,0,0), armlen);
+	arm2.add (reach);
+	
+	scene.add(arm);
+}
+
+function setCanvas(){
+	width = window.innerWidth;
+	height = window.innerHeight;
+	renderer = new THREE.WebGLRenderer({antialias: true});
+	renderer.setSize (width, height);
+	renderer.setClearColor (0x777777);
+	document.body.appendChild (renderer.domElement);
+
+	scene = new THREE.Scene();
+}
+function setObjects(){ 
+	// Cube
+	var cubeGeometry = new THREE.BoxGeometry (5,5,5);
+	var cubeMaterial = new THREE.MeshLambertMaterial ({color: 0x1ec876});
+	cube = new THREE.Mesh (cubeGeometry, cubeMaterial);
+
+	cube.position.set (0, 0, 0);
+	scene.add (cube);
+	
+	// Grid
+	gridXZ = new THREE.GridHelper(100, 10);
+	gridXZ.setColors( new THREE.Color(0xffffff), new THREE.Color(0xffffff) );
+	gridXZ.position.set(0,0,-100);
+	scene.add(gridXZ);
+	
+	// Plane
+	plane = new THREE.Mesh(
+		new THREE.PlaneBufferGeometry( 200, 200, 100, 8 ),
+		new THREE.MeshBasicMaterial( { color: 0x00ff00, opacity: 0.25, transparent: true } )
+	);
+	plane.rotation.x = -Math.PI/2;
+	plane.visible = false;   // invisible, for picking only
+	plane.position.set(0,0,-100);
+	scene.add( plane );
+	
+/*	// Circle (reset position)
+	var circle0 = new THREE.Mesh(
+		new THREE.CircleGeometry( 12, 50 ) ,  		// radius,segments 
+		new THREE.MeshBasicMaterial( { color: 0xffffff, transparent: true } )
+	);
+	//circle.position.set (0, 0, 0);
+	circle0.rotation.x = -Math.PI/2;
+	scene.add( circle0 );
+*/	
+	// Hockey
+	var hockeyGeometry = new THREE.CylinderGeometry (r,r,6,32);
+	var hockeyMaterial = new THREE.MeshLambertMaterial({color:0xaa0000});
+	hockey = new THREE.Mesh (hockeyGeometry, hockeyMaterial);
+	hockey.position.set(HP.x,HP.y,HP.z);
+	scene.add (hockey);
+	
+}
+
+function setCamera (){
+	camera = new THREE.PerspectiveCamera (45, width/height, 1, 1000);
+	camera.position.set (0, 300, 0.1);
+	camera.lookAt (new THREE.Vector3(0,0,-100));	
+}
+
+function setLight(){
+	var pointLight = new THREE.PointLight (0xffffff);
+	pointLight.position.set (0,300,200);
+	scene.add (pointLight);
+	
+	var ambientLight = new THREE.AmbientLight (0x111111);
+	scene.add(ambientLight);
+}
+
+function Resize(){
+	window.addEventListener ('resize', onWindowResize, false);	
+}
+function onWindowResize(){
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize (window.innerWidth, window.innerHeight);
+}
+
+function Listener(){
+	document.addEventListener( 'mousemove', onDocumentMouseMove, false );	
+}
+function onDocumentMouseMove( event ) {
+	// save old target
+	targetA = target;
+	
+	event.preventDefault();
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+	var vector = new THREE.Vector3( mouse.x, mouse.y, 0.5 ).unproject( camera );
+	var raycaster = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );
+	
+	var intersects = raycaster.intersectObject( plane );
+	if (intersects.length > 0) {
+		target = intersects[0].point.clone();//.sub (offset);
+		//console.log (target);
+		cube.position.copy (target);
+	}
+}
+
+function animate(){
+	Resize();
+	Listener();	
+	
+	//console.log("time: ", dt);
+	tryrota();
+	hockeyMove();
+	//console.log( Math.round( clock.getElapsedTime() ) );
+	
+	requestAnimationFrame ( animate );  // timer callback
+	render();  // display callback
+}
+
+function render(){
+	renderer.render (scene, camera);
+}
+
+function hockeyMove(){
+	var dt = clock.getDelta();
+	var dir = new THREE.Vector3(1,0,0);
+	dir.multiplyScalar (dt*speed);
+	TV = (target - targetA)/dt;
+	
+	Collision();
+	
+	//HV.multiplyScalar(0.99);
+	//HP.add(HV);
+	//pos.add (dir); 
+		
+		hockey.position.set (HP.x, HP.y, HP.z);
+		//hockey.rotation.y =(angle);
+}
+
+
+function Collision(){
+	if (HP.x + 10 > (gridXZ.position.x+100))
+		HV.x = -HV.x;
+	if (HP.x - 10 < (gridXZ.position.x-100))
+		HV.x = -HV.x;
+	if (HP.z + 10 > (gridXZ.position.z+100))
+		HV.z = -HV.z;		  
+	if (HP.z - 10 < (gridXZ.position.z-100))
+		HV.z = -HV.z;
+	
+	if (HP.distanceTo(target) < 2*r){
+		tempO.subVectors (HP, target);
+		tempT.subVectors (HV, TV);
+		HV = HV * 2 * tempT.dot(tempO) / (tempO.length()*tempO.length()) * tempO;
+		console.log("!!!");
+	}
+	console.log("HV: ",HV);
+}
+
+var i,max=10;
+function tryrota(){
+	for (i=0 ; i<max ; i++){
+		// reach target
+		if( r2.distanceTo(target) < r || i>=max ){
+			//console.log("end");
+			//console.log( r2.distanceTo(target) );
+			i = max;
+		}
+		// rotate arm2
+		else if( i%2==0 ){
+
+			tempO.subVectors (r2, r1);	// subVectors ( a, b ): a - b
+			tempT.subVectors (target, r1);
+			theta = Math.acos( tempO.dot(tempT) / (tempO.length() * tempT.length()) );
+			test.crossVectors(tempO, tempT);
+			if( test.y < 0)
+				theta *= -1;
+			
+			r2 = r2.applyAxisAngle( new THREE.Vector3( 0, 1, 0 ), theta )/*;*/.divideScalar(tempT.length()).multiplyScalar(armlen);
+			arm2.rotation.y = theta;
+		}
+		
+		// rotate arm1
+		else if ( i%2==1 ){
+		
+			tempO.subVectors (r1, r0);
+			tempT.subVectors (target, r0);
+			theta = Math.acos( tempO.dot(tempT) / (tempO.length() * tempT.length()) );
+			test.crossVectors(tempO, tempT);
+			if( test.y < 0)
+				theta *= -1;
+			arm.rotation.y = theta;		
+		}
+		//console.log("!!!!!!!!!!!!!!!\t",target );	//, "\tl: ",r2.length()
+		//console.log( "*");
+		//console.log( "targetA:\t",targetA );
+		//console.log( "target:\t",target);
+	}			
+}
+
+</script>
+</body>
+
+</html>
