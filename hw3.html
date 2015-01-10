@@ -35,7 +35,10 @@
 <body> 
 
 <div id="container"></div>
-
+<div id="info">
+   use R to reset the ball <br/>
+	
+</div>
 <audio id="soundtrack">
 <source src="sounds/ball.wav" type='audio/wav'>
 </audio>
@@ -131,12 +134,12 @@ function init()
 
 	wallset();
 	
-	gridXZ = new THREE.GridHelper(100, 10);
+	gridXZ = new THREE.GridHelper(200, 20);
 	gridXZ.setColors( new THREE.Color(0xff0000), new THREE.Color(0xffffff) );
 	scene.add(gridXZ);
 
 	var pointLight = new THREE.PointLight (0xffffff);
-	pointLight.position.set (0,300,200);
+	pointLight.position.set (100,300,200);
 	scene.add (pointLight);
 
 	var ambientLight = new THREE.AmbientLight (0x111111);
